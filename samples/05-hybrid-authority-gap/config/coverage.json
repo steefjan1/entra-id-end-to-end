@@ -1,0 +1,209 @@
+{
+  "title": "Which control reaches which surface",
+  "subtitle": "Conditional Access is a token issuance time control. Everything below follows from that one sentence.",
+  "lastReviewed": "2026-08",
+  "surfaces": [
+    {
+      "key": "cloud",
+      "label": "Entra cloud app sign-in",
+      "column": "cloud",
+      "description": "A user signs in to a Microsoft or SaaS application that federates to Microsoft Entra ID. Entra issues the token, so Entra gets a decision point."
+    },
+    {
+      "key": "kerberos",
+      "label": "On-premises app, Kerberos or NTLM or LDAP",
+      "column": "kerberos",
+      "description": "A domain joined client gets a ticket from a domain controller and presents it to a file server, a SQL Server, a line of business app or an LDAP directory. Microsoft Entra ID is not in the path and issues nothing."
+    },
+    {
+      "key": "appproxy",
+      "label": "On-premises app via Entra Application Proxy",
+      "column": "appProxy",
+      "description": "The app is published through Application Proxy. The user pre-authenticates to Entra, then a connector forwards the request inside the network, usually with Kerberos constrained delegation."
+    },
+    {
+      "key": "privateaccess",
+      "label": "On-premises app via Entra Private Access",
+      "column": "privAccess",
+      "description": "The Global Secure Access client acquires the traffic on the device and tunnels it. Private Access for Domain Controllers, GA January 2026, extends this to the Kerberos path itself."
+    },
+    {
+      "key": "workload",
+      "label": "Workload identity",
+      "column": "workload",
+      "description": "A service principal or managed identity authenticating with a certificate, a secret or a federated credential. There is no human and no device."
+    }
+  ],
+  "controls": [
+    {
+      "key": "conditionalAccess",
+      "label": "Conditional Access",
+      "summary": "Evaluated when Microsoft Entra ID issues a token. If no token is issued, no policy runs."
+    },
+    {
+      "key": "mfa",
+      "label": "MFA",
+      "summary": "A Conditional Access grant control, so it inherits Conditional Access reach exactly."
+    },
+    {
+      "key": "cae",
+      "label": "Continuous access evaluation",
+      "summary": "Near real time revocation and critical event enforcement, in place of waiting for the token to expire."
+    },
+    {
+      "key": "signInRisk",
+      "label": "Sign-in risk",
+      "summary": "Microsoft Entra ID Protection, needs Entra ID P2. Risk is computed from sign-in events Entra can see."
+    },
+    {
+      "key": "deviceCompliance",
+      "label": "Device compliance",
+      "summary": "A Conditional Access condition satisfied by a device bound token from a registered, joined or compliant device."
+    },
+    {
+      "key": "signInLogs",
+      "label": "Sign-in logs",
+      "summary": "Whether the access attempt appears anywhere in the Microsoft Entra sign-in logs."
+    }
+  ],
+  "matrix": {
+    "conditionalAccess": {
+      "cloud": {
+        "value": "yes",
+        "note": "This is the surface Conditional Access was designed for. Every interactive and non-interactive sign-in is a policy evaluation."
+      },
+      "kerberos": {
+        "value": "no",
+        "note": "The client talks to a domain controller, not to Entra. No token request reaches Entra, so no policy is evaluated. This is the slice the LinkedIn comment is about."
+      },
+      "appproxy": {
+        "value": "conditional",
+        "note": "Applies only when the published app uses Microsoft Entra ID pre-authentication. Set to passthrough and the request goes straight to the connector with no policy evaluation at all."
+      },
+      "privateaccess": {
+        "value": "yes",
+        "note": "Private Access traffic is a Conditional Access target. With Private Access for Domain Controllers the sensor evaluates policy for configured service principal names before forwarding the Kerberos request."
+      },
+      "workload": {
+        "value": "conditional",
+        "note": "Conditional Access for workload identities covers service principals but with a narrower condition and control set than user policies, and needs a Workload Identities Premium licence."
+      }
+    },
+    "mfa": {
+      "cloud": {
+        "value": "yes",
+        "note": "Grant control on the Conditional Access policy, or an authentication strength for phishing resistant methods."
+      },
+      "kerberos": {
+        "value": "no",
+        "note": "There is no place in the Kerberos or NTLM or LDAP exchange to insert an interactive challenge. Anything claiming otherwise is putting a proxy in front, which is the next two columns."
+      },
+      "appproxy": {
+        "value": "yes",
+        "note": "The pre-authentication sign-in is a normal Entra sign-in, so MFA and authentication strength both apply before the connector sees the request."
+      },
+      "privateaccess": {
+        "value": "yes",
+        "note": "This is the supported way to require MFA in front of an on-premises application, including local to local access. GA January 2026 for domain controllers."
+      },
+      "workload": {
+        "value": "no",
+        "note": "There is nobody to challenge. The equivalent hardening is managed identity or workload identity federation instead of a long lived secret."
+      }
+    },
+    "cae": {
+      "cloud": {
+        "value": "conditional",
+        "note": "Applies where the client and the resource both support CAE. Where they do not, revocation waits for the access token to expire."
+      },
+      "kerberos": {
+        "value": "no",
+        "note": "A Kerberos service ticket is valid for its lifetime, ten hours by default, and nothing in Entra can recall it. A TGT renewal can outlive that."
+      },
+      "appproxy": {
+        "value": "yes",
+        "note": "GA and on by default, and it works without the published application being CAE aware. Without strict enforcement it is opportunistic and can fall back to a regular token."
+      },
+      "privateaccess": {
+        "value": "conditional",
+        "note": "Universal CAE extends CAE to Private Access, Internet Access and Microsoft services that do not natively support it, enforcing at the network edge. Without it, revocation waits up to 90 minutes for token expiry."
+      },
+      "workload": {
+        "value": "no",
+        "note": "Assume an access token already issued to a service principal stays valid until it expires. Rotate or remove the credential and expect a lag."
+      }
+    },
+    "signInRisk": {
+      "cloud": {
+        "value": "yes",
+        "note": "Entra ID Protection scores the sign-in and Conditional Access can act on it. Requires Entra ID P2 for the risk condition."
+      },
+      "kerberos": {
+        "value": "no",
+        "note": "No sign-in event reaches Entra, so no risk is computed. Password hash synchronization is what lets Identity Protection raise leaked credential risk for a hybrid account at all, which is one reason Microsoft recommends enabling it whichever authentication method you choose."
+      },
+      "appproxy": {
+        "value": "yes",
+        "note": "The pre-authentication sign-in is a real Entra sign-in, so it is scored like any other. Requires Entra ID P2."
+      },
+      "privateaccess": {
+        "value": "yes",
+        "note": "Same as above, plus the Global Secure Access traffic gives you a second signal source. Requires Entra ID P2 for the risk condition."
+      },
+      "workload": {
+        "value": "conditional",
+        "note": "Workload identity risk exists as a separate detection set and needs a Workload Identities Premium licence. It is not the same detections as user sign-in risk."
+      }
+    },
+    "deviceCompliance": {
+      "cloud": {
+        "value": "yes",
+        "note": "Requires the device to be Entra registered, Entra joined or hybrid joined, and a compliance source such as Intune."
+      },
+      "kerberos": {
+        "value": "no",
+        "note": "The domain controller checks that the account is valid, not that the device is compliant. Domain join is not compliance."
+      },
+      "appproxy": {
+        "value": "conditional",
+        "note": "The device condition is evaluated at pre-authentication, so it works when the client presents a device bound token. Rich clients that only speak the internal protocol behind the connector do not."
+      },
+      "privateaccess": {
+        "value": "yes",
+        "note": "The Global Secure Access client runs on the device, so device state is available for the policy evaluation on that traffic."
+      },
+      "workload": {
+        "value": "no",
+        "note": "There is no device to be compliant. Use a location condition, a federated credential and a short lived secret instead."
+      }
+    },
+    "signInLogs": {
+      "cloud": {
+        "value": "yes",
+        "note": "Interactive and non-interactive sign-in logs, retained per your licence and exportable to a workspace."
+      },
+      "kerberos": {
+        "value": "no",
+        "note": "Your only record is the domain controller Security event log, events 4768, 4769 and 4771. It does not appear in the Entra sign-in logs and nothing correlates it there for you."
+      },
+      "appproxy": {
+        "value": "yes",
+        "note": "The pre-authentication shows in the Entra sign-in logs with the application name. What the connector does downstream does not."
+      },
+      "privateaccess": {
+        "value": "yes",
+        "note": "Entra sign-in logs plus Global Secure Access traffic logs, which is the closest you get to a per flow record of on-premises access."
+      },
+      "workload": {
+        "value": "yes",
+        "note": "Service principal sign-ins are a separate log category from user sign-ins. Many teams have never opened that tab."
+      }
+    }
+  },
+  "footnotes": [
+    "Licensing: Entra Private Access and Entra Internet Access require Entra ID P1 or P2. Both are included in the Microsoft Entra Suite and both are available standalone. Internet Access for Microsoft services is included in P1 and P2. Both are GA.",
+    "Private Access for Domain Controllers, GA January 2026: the Global Secure Access client tunnels to Private Access Sensors installed on domain controllers. The sensor intercepts Kerberos requests for configured service principal names and evaluates Conditional Access before forwarding. A Quick Access app segment on TCP 88 is required, and the sensor needs inbound TCP 1337 on the domain controller.",
+    "revokeSignInSessions invalidates refresh tokens and browser session cookies by stamping signInSessionsValidFromDateTime. It does not invalidate access tokens already issued, there can be a small delay of a few minutes, and it does not work for external or B2B users because they sign in through their home tenant.",
+    "Nothing in this table changes the fact that with password hash synchronization an on-premises disable can take up to about 30 minutes to reach the cloud. That is the row you cannot fix with a control, only with an authentication method or a source of authority change."
+  ]
+}

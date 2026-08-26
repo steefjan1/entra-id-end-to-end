@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+# There is no service to deploy here. This template is infrastructure only:
+# a user assigned managed identity, a federated identity credential on it, a
+# storage account and one role assignment. The thing being demonstrated is the
+# trust relationship, not an application.
+#
+# azd up will prompt for githubOrg and githubRepo, or read GITHUB_ORG and
+# GITHUB_REPO from the azd environment.
+
+name: workload-identity-federation
+metadata:
+  template: entra-id-end-to-end/06-workload-identity-federation@1.0.0
+
+infra:
+  provider: bicep
+  path: infra
+  module: main

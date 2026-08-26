@@ -1,0 +1,27 @@
+{
+  "displayName": "CAC005 Block service principals signing in from outside the corporate egress",
+  "state": "enabledForReportingButNotEnforced",
+  "conditions": {
+    "clientApplications": {
+      "includeServicePrincipals": ["ServicePrincipalsInMyTenant"],
+      "excludeServicePrincipals": ["${WORKLOAD_EXCEPTION_SP_OBJECT_ID}"]
+    },
+    "users": {
+      "includeUsers": ["None"]
+    },
+    "applications": {
+      "includeApplications": ["All"]
+    },
+    "clientAppTypes": ["all"],
+    "signInRiskLevels": [],
+    "userRiskLevels": [],
+    "locations": {
+      "includeLocations": ["All"],
+      "excludeLocations": ["${CORPORATE_NAMED_LOCATION_ID}"]
+    }
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": ["block"]
+  }
+}

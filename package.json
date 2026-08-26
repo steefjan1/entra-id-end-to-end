@@ -1,0 +1,22 @@
+{
+  "name": "entra-id-end-to-end",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Microsoft Entra ID end to end, including the parts the diagram leaves out",
+  "license": "MIT",
+  "workspaces": [
+    "shared/js",
+    "samples/01-token-inspector",
+    "samples/02-cae-claims-challenge",
+    "samples/03-conditional-access-as-code",
+    "samples/04-pim-payload",
+    "samples/05-hybrid-authority-gap",
+    "samples/06-workload-identity-federation"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "check": "node --check shared/js/graph.mjs"
+  }
+}

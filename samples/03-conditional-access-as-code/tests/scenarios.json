@@ -1,0 +1,128 @@
+{
+  "$comment": "Each scenario is one hypothetical sign in plus what you expect Conditional Access to do with it. Run with: npm test. Set TEST_USER_ID and BREAK_GLASS_USER_ID first.",
+  "scenarios": [
+    {
+      "name": "Normal user on a browser reaching the Entra admin center is challenged for MFA",
+      "request": {
+        "signInIdentity": {
+          "@odata.type": "#microsoft.graph.userSignIn",
+          "userId": "${TEST_USER_ID}"
+        },
+        "signInContext": {
+          "@odata.type": "#microsoft.graph.applicationContext",
+          "includeApplications": ["c44b4083-3bb0-49c1-b47d-974e53cbdf3c"]
+        },
+        "signInConditions": {
+          "clientAppType": "browser",
+          "devicePlatform": "windows",
+          "signInRiskLevel": "none",
+          "userRiskLevel": "none"
+        }
+      },
+      "expect": {
+        "policiesApply": ["CAC002 Require MFA for admin portals"],
+        "grantControls": ["mfa"]
+      }
+    },
+    {
+      "name": "The break glass account is never blocked by our own policies",
+      "request": {
+        "signInIdentity": {
+          "@odata.type": "#microsoft.graph.userSignIn",
+          "userId": "${BREAK_GLASS_USER_ID}"
+        },
+        "signInContext": {
+          "@odata.type": "#microsoft.graph.applicationContext",
+          "includeApplications": ["All"]
+        },
+        "signInConditions": {
+          "clientAppType": "browser",
+          "devicePlatform": "windows",
+          "signInRiskLevel": "high",
+          "userRiskLevel": "high"
+        }
+      },
+      "expect": {
+        "policiesDoNotApply": [
+          "CAC001 Block legacy authentication",
+          "CAC002 Require MFA for admin portals",
+          "CAC003 Block device code flow and authentication transfer",
+          "CAC004 High risk sign in requires MFA and a one hour session"
+        ]
+      }
+    },
+    {
+      "name": "Legacy authentication against Exchange Online is blocked",
+      "request": {
+        "signInIdentity": {
+          "@odata.type": "#microsoft.graph.userSignIn",
+          "userId": "${TEST_USER_ID}"
+        },
+        "signInContext": {
+          "@odata.type": "#microsoft.graph.applicationContext",
+          "includeApplications": ["00000002-0000-0ff1-ce00-000000000000"]
+        },
+        "signInConditions": {
+          "clientAppType": "exchangeActiveSync",
+          "devicePlatform": "android",
+          "signInRiskLevel": "none",
+          "userRiskLevel": "none"
+        }
+      },
+      "expect": {
+        "policiesApply": ["CAC001 Block legacy authentication"],
+        "grantControls": ["block"]
+      }
+    },
+    {
+      "name": "Device code flow is blocked even from a compliant Windows device",
+      "request": {
+        "signInIdentity": {
+          "@odata.type": "#microsoft.graph.userSignIn",
+          "userId": "${TEST_USER_ID}"
+        },
+        "signInContext": {
+          "@odata.type": "#microsoft.graph.applicationContext",
+          "includeApplications": ["All"]
+        },
+        "signInConditions": {
+          "clientAppType": "mobileAppsAndDesktopClients",
+          "devicePlatform": "windows",
+          "signInRiskLevel": "none",
+          "userRiskLevel": "none",
+          "deviceInfo": { "isCompliant": true },
+          "authenticationFlow": { "transferMethod": "deviceCodeFlow" }
+        }
+      },
+      "expect": {
+        "policiesApply": ["CAC003 Block device code flow and authentication transfer"],
+        "grantControls": ["block"]
+      }
+    },
+    {
+      "name": "A high risk sign in picks up the one hour session control",
+      "request": {
+        "signInIdentity": {
+          "@odata.type": "#microsoft.graph.userSignIn",
+          "userId": "${TEST_USER_ID}"
+        },
+        "signInContext": {
+          "@odata.type": "#microsoft.graph.applicationContext",
+          "includeApplications": ["All"]
+        },
+        "signInConditions": {
+          "clientAppType": "browser",
+          "devicePlatform": "macOS",
+          "signInRiskLevel": "high",
+          "userRiskLevel": "none",
+          "country": "NL",
+          "ipAddress": "185.15.59.201"
+        }
+      },
+      "expect": {
+        "policiesApply": ["CAC004 High risk sign in requires MFA and a one hour session"],
+        "grantControls": ["mfa"]
+      }
+    }
+  ]
+}

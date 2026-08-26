@@ -1,0 +1,24 @@
+{
+  "name": "workload-identity-federation",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Step 1 says User Signs In. Most sign-ins in a real tenant are not users, and the controls drawn around step 1 do not reach them.",
+  "scripts": {
+    "inventory": "node src/workload-inventory.mjs",
+    "inventory:json": "node src/workload-inventory.mjs --json",
+    "fic": "node src/create-fic.mjs",
+    "fic:plan": "node src/create-fic.mjs --dry-run",
+    "fic:list": "node src/create-fic.mjs --list",
+    "ca": "node src/ca-workload-policy.mjs",
+    "ca:plan": "node src/ca-workload-policy.mjs --dry-run",
+    "check": "node --check src/workload-inventory.mjs && node --check src/create-fic.mjs && node --check src/ca-workload-policy.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.5.0"
+  },
+  "license": "MIT"
+}

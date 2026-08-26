@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Token inspector</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="page-header">
+      <h1>Token inspector</h1>
+      <p class="sub">
+        The infographic draws "Issue Token" as one icon. Here is what that icon actually produced
+        for you: a specific set of claims, with a specific lifetime, most of which nobody ever
+        looks at.
+      </p>
+      <div class="actions">
+        <button id="signIn" type="button">Sign in</button>
+        <button id="refresh" type="button" hidden>Call /api/whoami again</button>
+        <button id="signOut" type="button" hidden>Sign out</button>
+        <span id="who" class="who"></span>
+      </div>
+      <p id="status" class="status" role="status"></p>
+    </header>
+
+    <main>
+      <section class="panel warn" id="graphWarning">
+        <h2>This page does not decode a Microsoft Graph token, on purpose</h2>
+        <p>
+          There is no Graph token anywhere in this app. Microsoft Graph access tokens use a
+          proprietary format and Microsoft documents them as opaque to clients: they cannot be
+          validated by the rules on this page and their contents are not a contract you may build
+          on. Pasting one into jwt.ms is sanctioned for debugging and nothing else.
+        </p>
+        <p>
+          The same rule applies to every access token you did not issue. A client must treat an
+          access token as an opaque string and must never validate it. Only the resource named in
+          <code>aud</code> validates, and only tokens meant for itself. Validating somebody else
+          token is the confused deputy problem with extra steps.
+        </p>
+        <p class="tight">
+          Which is why the access token panel below is filled in by the API, not by this page. The
+          browser sends the token to <code>/api/whoami</code> and renders what the resource says
+          about it. The ID token panel is different: an ID token is issued <em>to this client</em>,
+          so this client is allowed to read it.
+        </p>
+      </section>
+
+      <section class="panel" id="lifetimePanel" hidden>
+        <h2>Lifetime</h2>
+        <div class="lifetime-grid">
+          <div class="metric">
+            <span class="metric-value" id="countdown">--:--</span>
+            <span class="metric-label">until <code>exp</code></span>
+          </div>
+          <div class="metric">
+            <span class="metric-value" id="lifetimeMinutes">--</span>
+            <span class="metric-label">minutes granted (<code>exp</code> minus <code>iat</code>)</span>
+          </div>
+          <div class="metric">
+            <span class="metric-value" id="issuedAt">--</span>
+            <span class="metric-label">issued at</span>
+          </div>
+        </div>
+        <ul class="notes">
+          <li>
+            Entra ID randomizes the default access token lifetime between 60 and 90 minutes, 75
+            minutes on average. That is deliberate: if every token expired on a round number, every
+            client on earth would refresh at the same instant and spike traffic to Entra ID. Sign in
+            again tomorrow and this number will be different.
+          </li>
+          <li>
+            A tenant with no Conditional Access gets a 2 hour default for clients such as Teams and
+            Microsoft 365.
+          </li>
+          <li>
+            <strong>Nothing can revoke this token before the countdown reaches zero.</strong>
+            Disabling the account, deleting the session, revoking consent: none of it reaches a
+            token already in browser memory. The client waits for expiry and then presents its
+            refresh token.
+          </li>
+          <li>
+            In a continuous access evaluation session the picture inverts: the access token becomes
+            long lived, 20 to 28 hours, because revocation moves to a signal from the resource
+            instead of to expiry. Configurable Token Lifetime policy is not honored for CAE-aware
+            sessions.
+          </li>
+          <li>
+            <strong>This app is registered with a <code>spa</code> redirect URI</strong>, so the
+            refresh token behind that silent renewal lasts 24 hours, not the usual 90 days. Refresh
+            tokens also rotate on every use, so the one held now is not the one issued at sign-in.
+          </li>
+        </ul>
+      </section>
+
+      <section class="panel" id="summaryPanel" hidden>
+        <h2>The claims your authorization code should be reading</h2>
+        <div id="summary" class="summary-grid"></div>
+      </section>
+
+      <section class="panel" id="validationPanel" hidden>
+        <h2>What the API checked before it answered</h2>
+        <ul id="validationChecks" class="checks"></ul>
+        <p class="meta" id="validationMeta"></p>
+      </section>
+
+      <section class="panel" id="tokensPanel" hidden>
+        <h2>Claims side by side</h2>
+        <div class="two-col">
+          <div>
+            <h3>Access token <span class="tag">validated by the API</span></h3>
+            <p class="meta">
+              Audience is this API. The browser never parsed it.
+            </p>
+            <table class="claims" id="accessClaims">
+              <thead>
+                <tr><th>Claim</th><th>Value</th><th>What it is for</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div>
+            <h3>ID token <span class="tag alt">read by this client</span></h3>
+            <p class="meta">
+              Audience is this SPA. It is a sign-in receipt, not an authorization token. Never send
+              it to an API as a bearer token.
+            </p>
+            <table class="claims" id="idClaims">
+              <thead>
+                <tr><th>Claim</th><th>Value</th><th>What it is for</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Verified facts</h2>
+        <p class="meta">
+          Served by <code>/api/token-facts</code>. Every line links to the Microsoft Learn page it
+          came from.
+        </p>
+        <div id="facts" class="facts"></div>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        A debugging tool, not a security control. Do not leave it deployed on a public endpoint with
+        real user data.
+      </p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

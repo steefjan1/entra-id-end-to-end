@@ -1,0 +1,22 @@
+{
+  "name": "ca-as-code",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Conditional Access policy as code with a report-only guard and What If tests",
+  "scripts": {
+    "lint": "node src/guard.mjs",
+    "plan": "node src/deploy.mjs --dry-run",
+    "deploy": "node src/deploy.mjs",
+    "test": "node src/whatif.mjs",
+    "bootstrap": "node src/bootstrap-prereqs.mjs",
+    "bootstrap:plan": "node src/bootstrap-prereqs.mjs --dry-run"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.5.0"
+  },
+  "license": "MIT"
+}

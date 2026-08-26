@@ -1,0 +1,23 @@
+{
+  "name": "pim-payload",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "PIM controls when a role is active. This sample shows what the role can do once it is.",
+  "scripts": {
+    "policy:plan": "node src/configure-policy.mjs --dry-run",
+    "policy": "node src/configure-policy.mjs",
+    "assign:plan": "node src/assign-eligible.mjs --dry-run",
+    "assign": "node src/assign-eligible.mjs",
+    "report": "node src/entitlement-report.mjs",
+    "review:plan": "node src/access-review.mjs --dry-run",
+    "review": "node src/access-review.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.5.0"
+  },
+  "license": "MIT"
+}

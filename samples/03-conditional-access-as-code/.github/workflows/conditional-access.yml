@@ -1,0 +1,84 @@
+# Conditional Access pipeline.
+#
+# Pull request: lint the policy files and print the plan. Nothing is sent.
+# Merge to main: deploy in report only, then run the What If scenarios and
+# fail the run if the tenant does not behave the way the tests expect.
+#
+# Authentication uses workload identity federation, so there is no secret in
+# this repository. See sample 06 for how to create the federated credential.
+# Copy this file to .github/workflows/ at the root of your own repository.
+
+name: conditional-access
+
+on:
+  pull_request:
+    paths:
+      - 'samples/03-conditional-access-as-code/**'
+  push:
+    branches: [main]
+    paths:
+      - 'samples/03-conditional-access-as-code/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+defaults:
+  run:
+    working-directory: samples/03-conditional-access-as-code
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install
+      - name: Guard
+        run: npm run lint
+        env:
+          BREAK_GLASS_GROUP_ID: ${{ vars.BREAK_GLASS_GROUP_ID }}
+          DEVICE_CODE_EXCEPTION_GROUP_ID: ${{ vars.DEVICE_CODE_EXCEPTION_GROUP_ID }}
+          WORKLOAD_EXCEPTION_SP_OBJECT_ID: ${{ vars.WORKLOAD_EXCEPTION_SP_OBJECT_ID }}
+          CORPORATE_NAMED_LOCATION_ID: ${{ vars.CORPORATE_NAMED_LOCATION_ID }}
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: plan
+    runs-on: ubuntu-latest
+    environment: entra-tenant
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install
+
+      - name: Azure login with workload identity federation
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          allow-no-subscriptions: true
+
+      - name: Deploy policies in report only
+        run: npm run deploy
+        env:
+          ENTRA_AUTH_MODE: azurecli
+          ENTRA_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          BREAK_GLASS_GROUP_ID: ${{ vars.BREAK_GLASS_GROUP_ID }}
+          DEVICE_CODE_EXCEPTION_GROUP_ID: ${{ vars.DEVICE_CODE_EXCEPTION_GROUP_ID }}
+          WORKLOAD_EXCEPTION_SP_OBJECT_ID: ${{ vars.WORKLOAD_EXCEPTION_SP_OBJECT_ID }}
+          CORPORATE_NAMED_LOCATION_ID: ${{ vars.CORPORATE_NAMED_LOCATION_ID }}
+
+      - name: Evaluate What If scenarios
+        run: npm test
+        env:
+          ENTRA_AUTH_MODE: azurecli
+          ENTRA_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          TEST_USER_ID: ${{ vars.TEST_USER_ID }}
+          BREAK_GLASS_USER_ID: ${{ vars.BREAK_GLASS_USER_ID }}

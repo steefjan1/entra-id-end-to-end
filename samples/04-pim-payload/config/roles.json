@@ -1,0 +1,161 @@
+{
+  "description": "Declarative input for the 04-pim-payload sample. Every script reads this file, so a run is repeatable and a change is reviewable in a pull request.",
+  "scope": {
+    "scopeId": "/",
+    "scopeType": "DirectoryRole"
+  },
+  "defaults": {
+    "policy": {
+      "activation": {
+        "isExpirationRequired": true,
+        "maximumDuration": "PT2H",
+        "enabledRules": ["MultiFactorAuthentication", "Justification"],
+        "approval": {
+          "isApprovalRequired": false,
+          "isRequestorJustificationRequired": true,
+          "stage": {
+            "approvalStageTimeoutInDays": 1,
+            "isApproverJustificationRequired": true,
+            "escalationTimeoutInMinutes": 0,
+            "isEscalationEnabled": false
+          },
+          "primaryApprovers": []
+        }
+      }
+    },
+    "eligibility": {
+      "maximumEligibilityDays": 180,
+      "justification": "Managed by the 04-pim-payload sample"
+    },
+    "accessReview": {
+      "principalScopeQuery": "/users",
+      "instanceDurationInDays": 14,
+      "autoApplyDecisionsEnabled": true,
+      "defaultDecisionEnabled": true,
+      "defaultDecision": "Deny",
+      "justificationRequiredOnApproval": true,
+      "mailNotificationsEnabled": true,
+      "reminderNotificationsEnabled": true,
+      "recommendationsEnabled": true,
+      "recurrence": {
+        "pattern": {
+          "type": "absoluteMonthly",
+          "interval": 3,
+          "dayOfMonth": 1
+        },
+        "range": {
+          "type": "noEnd"
+        }
+      },
+      "fallbackReviewers": [
+        {
+          "@odata.type": "#microsoft.graph.accessReviewReviewerScope",
+          "query": "/groups/${PIM_FALLBACK_REVIEWER_GROUP_ID}/transitiveMembers",
+          "queryType": "MicrosoftGraph"
+        }
+      ]
+    }
+  },
+  "roles": [
+    {
+      "name": "Global Administrator",
+      "templateId": "62e90394-69f5-4237-9190-012177145e10",
+      "note": "Wildcard payload. Every activation is a full tenant takeover for the length of the window. The window length is close to irrelevant here.",
+      "policy": {
+        "activation": {
+          "maximumDuration": "PT1H",
+          "enabledRules": ["MultiFactorAuthentication", "Justification"],
+          "approval": {
+            "isApprovalRequired": true,
+            "primaryApprovers": [
+              {
+                "@odata.type": "#microsoft.graph.groupMembers",
+                "isBackup": false,
+                "id": "${PIM_APPROVER_GROUP_ID}",
+                "description": "PIM approvers"
+              }
+            ]
+          }
+        }
+      },
+      "accessReview": {
+        "instanceDurationInDays": 7,
+        "recurrence": {
+          "pattern": {
+            "type": "absoluteMonthly",
+            "interval": 1,
+            "dayOfMonth": 1
+          },
+          "range": {
+            "type": "noEnd"
+          }
+        }
+      }
+    },
+    {
+      "name": "Privileged Role Administrator",
+      "templateId": "e8611ab8-c189-46e8-94e1-60213ab1f814",
+      "note": "Can rewrite the PIM policies this sample configures, and can assign itself anything. Treat it exactly like Global Administrator.",
+      "policy": {
+        "activation": {
+          "maximumDuration": "PT1H",
+          "approval": {
+            "isApprovalRequired": true,
+            "primaryApprovers": [
+              {
+                "@odata.type": "#microsoft.graph.groupMembers",
+                "isBackup": false,
+                "id": "${PIM_APPROVER_GROUP_ID}",
+                "description": "PIM approvers"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "Application Administrator",
+      "templateId": "9b895d92-2cd3-44c7-9d02-a6ac2d5ea5c3",
+      "note": "Holds application credential management. One activation is long enough to add a client secret to an application that already holds Graph application permissions, and that secret outlives the activation window by its own expiry.",
+      "policy": {
+        "activation": {
+          "maximumDuration": "PT2H",
+          "approval": {
+            "isApprovalRequired": true,
+            "primaryApprovers": [
+              {
+                "@odata.type": "#microsoft.graph.groupMembers",
+                "isBackup": false,
+                "id": "${PIM_APPROVER_GROUP_ID}",
+                "description": "PIM approvers"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "name": "User Administrator",
+      "templateId": "fe930be7-5e62-47db-91af-98c3a49a38b1",
+      "note": "Password reset and authentication method write on non privileged users. The blast radius is every account that is not protected by a role assignable boundary.",
+      "policy": {
+        "activation": {
+          "maximumDuration": "PT4H"
+        }
+      }
+    },
+    {
+      "name": "Groups Administrator",
+      "templateId": "fdd7a751-b60b-444a-984c-02652fe8fa1c",
+      "note": "Small action list, enormous payload. Group membership write is how an Entra group that maps to System Administrator inside an ERP or a SaaS tenant gets a new member. Action counts do not measure this. Only knowing what your groups grant does.",
+      "policy": {
+        "activation": {
+          "maximumDuration": "PT8H",
+          "approval": {
+            "isApprovalRequired": false
+          }
+        }
+      }
+    }
+  ]
+}

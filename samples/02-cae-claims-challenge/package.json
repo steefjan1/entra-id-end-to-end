@@ -1,0 +1,24 @@
+{
+  "name": "cae-claims-challenge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Measure how long a revoked user keeps access, with and without continuous access evaluation",
+  "scripts": {
+    "selftest": "node src/claims-challenge.mjs --selftest",
+    "stopwatch": "node src/stopwatch.mjs",
+    "api": "node src/step-up-api.mjs",
+    "setup": "node src/setup-auth-context.mjs",
+    "check": "node --check src/claims-challenge.mjs && node --check src/stopwatch.mjs && node --check src/step-up-api.mjs && node --check src/setup-auth-context.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.5.0",
+    "@azure/msal-node": "^2.16.2",
+    "express": "^4.21.2",
+    "jose": "^5.9.6"
+  },
+  "license": "MIT"
+}

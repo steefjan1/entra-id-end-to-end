@@ -1,0 +1,24 @@
+{
+  "name": "hybrid-authority-gap",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Hybrid identity is two systems that disagree about who owns an account. This sample measures the disagreement.",
+  "scripts": {
+    "report": "node src/sync-report.mjs",
+    "report:json": "node src/sync-report.mjs --json",
+    "soa": "node src/soa-inspect.mjs",
+    "soa:plan": "node src/soa-inspect.mjs --dry-run",
+    "watch": "node src/disable-propagation-watch.mjs",
+    "watch:plan": "node src/disable-propagation-watch.mjs --dry-run",
+    "coverage": "node src/control-coverage.mjs",
+    "coverage:notes": "node src/control-coverage.mjs --notes"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.5.0"
+  },
+  "license": "MIT"
+}

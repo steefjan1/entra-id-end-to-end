@@ -1,0 +1,20 @@
+{
+  "name": "token-inspector",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shows what is actually inside the tokens an Entra ID sign-in produces, and how long they live",
+  "main": "src/server.mjs",
+  "scripts": {
+    "start": "node src/server.mjs",
+    "check": "node --check src/server.mjs && node --check src/claims.mjs && node --check src/facts.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "jose": "^5.9.6"
+  },
+  "license": "MIT"
+}

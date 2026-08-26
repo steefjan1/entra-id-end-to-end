@@ -1,0 +1,23 @@
+{
+  "displayName": "CAC003 Block device code flow and authentication transfer",
+  "state": "enabledForReportingButNotEnforced",
+  "conditions": {
+    "users": {
+      "includeUsers": ["All"],
+      "excludeGroups": ["${BREAK_GLASS_GROUP_ID}", "${DEVICE_CODE_EXCEPTION_GROUP_ID}"]
+    },
+    "applications": {
+      "includeApplications": ["All"]
+    },
+    "clientAppTypes": ["all"],
+    "signInRiskLevels": [],
+    "userRiskLevels": [],
+    "authenticationFlows": {
+      "transferMethods": "deviceCodeFlow,authenticationTransfer"
+    }
+  },
+  "grantControls": {
+    "operator": "OR",
+    "builtInControls": ["block"]
+  }
+}

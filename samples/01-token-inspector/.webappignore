@@ -1,0 +1,20 @@
+# Files azd should not push to App Service.
+#
+# node_modules is excluded and the dependencies are installed on the server by
+# Oryx, driven by SCM_DO_BUILD_DURING_DEPLOYMENT in infra/resources.bicep.
+# These two settings are a pair and must always move together. Excluding
+# node_modules without the remote build gives you "Cannot find package
+# 'express'" at container start.
+#
+# The first deployment is slow, because Oryx installs from scratch. On this
+# sample it has taken over five minutes, which is longer than azd waits before
+# printing "no App Service deployment status change". That warning means azd
+# stopped watching, not that the deployment failed. Check the app itself
+# rather than trusting the warning: see the README section on it.
+.azure/
+.git/
+infra/
+scripts/
+node_modules/
+README.md
+azure.yaml

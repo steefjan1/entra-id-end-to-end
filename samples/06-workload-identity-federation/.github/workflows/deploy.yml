@@ -1,0 +1,143 @@
+# Secretless deploy. There is no client secret in this file, in this
+# repository, or in GitHub Actions secrets. Search it. There isn't one.
+#
+# ---------------------------------------------------------------------------
+# What actually happens when this workflow runs
+# ---------------------------------------------------------------------------
+#
+# 1. GitHub mints an OIDC token for this job. It is signed by GitHub, it lives
+#    for a few minutes, and it carries claims describing the run:
+#
+#      iss  https://token.actions.githubusercontent.com
+#      sub  repo:<Org>/<Repo>:environment:production
+#      aud  api://AzureADTokenExchange
+#
+#    The permissions block below is what allows the job to request it. Without
+#    "id-token: write" there is no token and azure/login fails with a message
+#    about the OIDC request URL being missing. That permission does not grant
+#    write access to anything; it grants the job the right to ask GitHub to
+#    sign a statement about itself.
+#
+# 2. azure/login@v2 sends that token to Microsoft Entra ID, at the token
+#    endpoint, as a client assertion, along with the client-id and tenant-id.
+#
+# 3. Entra looks up the federated identity credential on that identity and
+#    compares three fields against the token:
+#
+#      issuer     must match exactly
+#      subject    must match exactly, character for character
+#      audience   must match one of the audiences on the credential
+#
+#    There is no wildcard and no partial match outside the flexible federated
+#    credential preview. A credential for refs/heads/main does not match a run
+#    on refs/heads/release. That strictness is the feature.
+#
+# 4. If all three match, Entra issues an access token for the managed identity
+#    or app registration. From that point on the job is that identity, and
+#    Azure RBAC decides what it can do.
+#
+# At no point did a secret exist. Nothing was stored, so nothing can leak,
+# nothing expires at 2am, and nothing needs rotating. What replaced the secret
+# is the subject string, so the subject string is now the security control.
+#
+# ---------------------------------------------------------------------------
+# Before this works
+# ---------------------------------------------------------------------------
+#
+# Set these as GitHub repository or environment VARIABLES (not secrets, none
+# of them is one). azd up prints all three.
+#
+#   AZURE_CLIENT_ID        client ID of the user assigned managed identity
+#   AZURE_TENANT_ID        directory (tenant) ID
+#   AZURE_SUBSCRIPTION_ID  subscription the storage account is in
+#   AZURE_STORAGE_ACCOUNT_NAME
+#   AZURE_STORAGE_CONTAINER_NAME
+#
+# The environment name below must match the environment in the federated
+# credential subject. If infra was deployed with githubSubjectKind set to
+# environment and githubRefName set to production, this job has to run in a
+# GitHub environment called production, spelled the same way, same case.
+
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# id-token: write is what lets the job request the OIDC token.
+# contents: read is the ordinary checkout permission.
+# Nothing else is granted, at the top level, on purpose.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  prove-access:
+    runs-on: ubuntu-latest
+
+    # A GitHub environment is the thing that makes this subject worth trusting.
+    # Put required reviewers and a branch restriction on it. Without those, an
+    # environment is only a name, and the credential trusts anything that can
+    # claim the name.
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sign in to Azure with workload identity federation
+        uses: azure/login@v2
+        with:
+          # Client ID, not principal ID and not resource ID. This is the most
+          # common thing to get wrong, and the error says "AADSTS700016:
+          # Application with identifier ... was not found", which does not
+          # obviously mean "you pasted the wrong GUID".
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          # No client-secret input. There is nowhere to put one and nothing
+          # to put there.
+
+      - name: Show which identity this job became
+        run: |
+          az account show --output table
+          echo "Signed in principal:"
+          az ad signed-in-user show --only-show-errors 2>/dev/null \
+            || echo "Not a user. This is a workload identity, which is the point of this sample."
+
+      - name: Prove data plane access by listing the container
+        env:
+          STORAGE_ACCOUNT: ${{ vars.AZURE_STORAGE_ACCOUNT_NAME }}
+          CONTAINER: ${{ vars.AZURE_STORAGE_CONTAINER_NAME }}
+        run: |
+          # --auth-mode login uses the Entra token from azure/login. It does
+          # not use a storage account key, and the account was deployed with
+          # allowSharedKeyAccess set to false, so there is no key to fall back
+          # on even by accident.
+          az storage blob list \
+            --account-name "$STORAGE_ACCOUNT" \
+            --container-name "$CONTAINER" \
+            --auth-mode login \
+            --output table
+
+      - name: Show what this identity cannot do
+        env:
+          STORAGE_ACCOUNT: ${{ vars.AZURE_STORAGE_ACCOUNT_NAME }}
+          CONTAINER: ${{ vars.AZURE_STORAGE_CONTAINER_NAME }}
+        continue-on-error: true
+        run: |
+          # The role assignment is Storage Blob Data Reader, so this upload is
+          # expected to fail with AuthorizationPermissionMismatch. A federated
+          # credential removed the secret. It did not widen the permissions,
+          # and it did not narrow them either. Authorization is still entirely
+          # a matter of the RBAC assignment in infra/resources.bicep.
+          echo "proof" > proof.txt
+          az storage blob upload \
+            --account-name "$STORAGE_ACCOUNT" \
+            --container-name "$CONTAINER" \
+            --name proof.txt \
+            --file proof.txt \
+            --auth-mode login \
+            --overwrite \
+            && echo "UNEXPECTED: this identity can write. Check the role assignment." \
+            || echo "Expected: write denied. Storage Blob Data Reader is read only."

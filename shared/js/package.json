@@ -1,0 +1,15 @@
+{
+  "name": "entra-samples-shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared Microsoft Graph helper used by the samples in entra-id-end-to-end",
+  "main": "graph.mjs",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.5.0"
+  },
+  "license": "MIT"
+}
